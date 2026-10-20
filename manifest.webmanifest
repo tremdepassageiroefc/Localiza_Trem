@@ -1,0 +1,17 @@
+{
+  "name": "EFC — A bordo",
+  "short_name": "EFC A bordo",
+  "description": "Km, velocidade, atraso e previsão do trem de passageiros da EFC (P-21 / P-22) usando o GPS do celular, mesmo sem internet.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#12161A",
+  "theme_color": "#12161A",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

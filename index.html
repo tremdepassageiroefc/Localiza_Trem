@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EFC — A bordo</title>
+<meta name="theme-color" content="#12161A">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12161A; --panel:#181D22; --line:#262D34;
+    --amber:#FFC93C; --green:#38D48A; --red:#E5534B;
+    --text:#E9EDF0; --muted:#8B96A1;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:'IBM Plex Sans',system-ui,sans-serif; display:flex; flex-direction:column;}
+  header{padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+  header h1{font-size:15px; font-weight:600; margin:0;}
+  header .sub{color:var(--muted); font-size:12px; margin-top:2px;}
+  .badge{display:flex; align-items:center; gap:7px; font-size:12px; padding:5px 10px; border-radius:20px; border:1px solid #1f3d2e; background:#132018; color:var(--green);}
+  .badge.off{border-color:#3d1f1f; background:#201313; color:var(--red);}
+  .dot{width:7px; height:7px; border-radius:50%; background:currentColor; box-shadow:0 0 0 0 currentColor; animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(56,212,138,.55);}70%{box-shadow:0 0 0 8px rgba(56,212,138,0);}100%{box-shadow:0 0 0 0 rgba(56,212,138,0);}}
+  .km-banner{position:relative; text-align:center; padding:10px 12px 4px;}
+  .km-banner .speed-block{position:absolute; right:20px; top:10px; text-align:right;}
+  .km-banner .speed-block .value{color:#5FC7FF;}
+  .km-banner .speed-block .unit{font-size:.5em; margin-left:.3em; opacity:.85;}
+  .km-banner .value.yard{font-size:clamp(18px,4.4vw,32px); line-height:1.6;}
+  .km-banner .label{font-size:11px; color:var(--muted); letter-spacing:.4px;}
+  .km-banner .value{font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--amber); font-size:clamp(34px,7vw,58px); line-height:1.1; font-variant-numeric:tabular-nums;}
+  main{flex:1; display:flex; min-height:0;}
+  .map-wrap{flex:1; position:relative; min-width:0; container-type:size; container-name:map; background:radial-gradient(circle at 30% 20%, #171d22 0%, #0f1317 70%);}
+  svg{width:100%; height:100%; display:block; touch-action:pan-y; user-select:none; -webkit-user-select:none;}
+  .zoom-reset{position:absolute; left:12px; bottom:12px; z-index:3; display:none; background:rgba(16,21,26,.85); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-family:inherit; font-size:12px; cursor:pointer;}
+  .trail{vector-effect:non-scaling-stroke; fill:none; stroke:#2ECC71; stroke-opacity:.5; stroke-width:5; stroke-linecap:round; stroke-linejoin:round; pointer-events:none;}
+  .track{vector-effect:non-scaling-stroke; fill:none; stroke:#C7402B; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;}
+  .station-dot{fill:var(--green); stroke:#0d1a13; stroke-width:1.5;}
+  .station-label{fill:var(--amber); font-size:14px; font-weight:600; paint-order:stroke; stroke:#0f1317; stroke-width:3px;}
+  .station-label-bg{fill:#0B0E11; opacity:.78;}
+  .train-glow{fill:var(--amber); opacity:.18;}
+  .train-pin{fill:var(--amber); stroke:#4a3a06; stroke-width:1;}
+  .train-window{fill:#1b2a3a;}
+  aside{width:300px; flex-shrink:0; background:var(--panel); border-left:1px solid var(--line); padding:18px; overflow-y:auto;}
+  .stat{margin-bottom:16px;}
+  .stat .l{font-size:11px; color:var(--muted); margin-bottom:2px;}
+  .stat .v{font-size:15px; font-weight:600;}
+  .big{background:#10151A; border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:12px;}
+  .big .l{font-size:11px; color:var(--muted); letter-spacing:.3px;}
+  .big .v{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:28px; font-variant-numeric:tabular-nums;}
+  .big.km .v{color:var(--amber);}
+  .big.speed .v{color:#5FC7FF;}
+  .big.stopped{border-color:var(--amber); background:#2a2412;}
+  .big.stopped .l{color:var(--amber); font-weight:600;}
+  .big.stopped .v{color:var(--amber); font-size:22px; line-height:1.3;}
+  .big.nearest .v{color:var(--green); font-size:19px; line-height:1.3;}
+  .legend{display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); margin-bottom:6px;}
+  .sw{width:11px; height:11px; border-radius:3px; flex-shrink:0;}
+  hr{border:none; border-top:1px solid var(--line); margin:16px 0;}
+  .signature{font-size:11.5px; color:var(--muted); margin:0; text-align:center; letter-spacing:.2px;}
+  .note{font-size:11.5px; color:var(--muted); line-height:1.5;}
+  .big.next-station .v{color:var(--amber); font-size:17px; line-height:1.35;}
+  .big .from{font-size:11px; color:var(--muted); margin-top:4px;}
+  .big.leg .v{font-size:15px; line-height:1.4; color:var(--text);}
+  .big.delay .v{font-size:19px;}
+  .big.delay .v.late{color:var(--red);}
+  .big.delay .v.early{color:var(--green);}
+  .big.delay .v.ontime{color:var(--muted);}
+  /* Overlays proporcionais ao tamanho do mapa (cqmin = menor lado do mapa) */
+  .info-overlay{
+    position:absolute; left:clamp(6px,1.8cqmin,12px); top:clamp(6px,1.8cqmin,12px); z-index:5;
+    background:rgba(16,21,26,.85); border:1px solid var(--line); border-radius:clamp(5px,1.2cqmin,8px);
+    padding:clamp(5px,1.6cqmin,10px) clamp(7px,2.2cqmin,14px); pointer-events:none;
+  }
+  .info-overlay .stat{margin-bottom:clamp(4px,1.5cqmin,10px);}
+  .info-overlay .stat:last-child{margin-bottom:0;}
+  .info-overlay .stat .l{font-size:clamp(8px,1.7cqmin,11px); margin-bottom:clamp(1px,.3cqmin,2px);}
+  .info-overlay .stat .v{font-size:clamp(10px,2.4cqmin,15px);}
+  .clock-overlay{
+    position:absolute; right:clamp(6px,1.8cqmin,12px); bottom:clamp(6px,1.8cqmin,12px); z-index:5;
+    background:#111111; color:#FFFFFF;
+    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:clamp(10px,2.2cqmin,14px);
+    padding:clamp(4px,1cqmin,6px) clamp(7px,2.2cqmin,14px); border-radius:6px; letter-spacing:.3px;
+    pointer-events:none;
+  }
+  /* Tela inicial: escolha do modo */
+  .mode-screen{position:fixed; inset:0; z-index:50; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px; text-align:center; overflow:auto;}
+  .mode-screen h2{margin:0; font-size:20px; font-weight:600;}
+  .mode-screen p{margin:0; color:var(--muted); font-size:13px; max-width:420px; line-height:1.5;}
+  .mode-btn{width:min(420px,100%); background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:12px; padding:16px 18px; text-align:left; font-family:inherit; cursor:pointer;}
+  .viagem-row{width:min(420px,100%); text-align:left; font-size:12.5px; color:var(--muted);}
+  .viagem-btns{display:flex; gap:8px; margin-top:6px;}
+  .viagem-btns button{flex:1; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:11px 6px; font-family:inherit; font-size:15px; font-weight:600; cursor:pointer;}
+  .viagem-btns button.on{border-color:var(--amber); color:var(--amber); background:#2a2412;}
+  .viagem-hint{margin-top:6px; font-size:12px; color:var(--muted);}
+  #viagemTag{color:var(--amber); font-weight:600;}
+  .mode-btn:active{border-color:var(--amber);}
+  .mode-btn .t{font-size:17px; font-weight:600; color:var(--amber);}
+  .mode-btn .d{font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.45;}
+  .mode-btn.remote .t{color:#5FC7FF;}
+  .mode-err{color:var(--red); font-size:13px; min-height:18px; max-width:420px;}
+  .switch-btn{background:transparent; color:var(--muted); border:1px solid var(--line); border-radius:20px; padding:5px 10px; font-size:12px; font-family:inherit; cursor:pointer;}
+  .hdr-right{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  @media (max-width:760px){
+    .km-banner{display:flex; justify-content:space-between; align-items:flex-start; text-align:left;} .km-banner .speed-block{position:static;}main{flex-direction:column;} aside{width:auto; border-left:none; border-top:1px solid var(--line);} .map-wrap{flex:none; height:46vh;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Localização Trem de Passageiros EFC</h1>
+    <div class="sub"><span id="viagemTag"></span>Trecho EFC · km 0 a 863</div>
+  </div>
+  <div class="hdr-right">
+    <button class="switch-btn" id="switchMode" type="button" style="display:none">Reiniciar</button>
+    <div class="badge off" id="liveBadge"><span class="dot"></span> <span id="liveText">Escolha o modo</span></div>
+  </div>
+</header>
+
+<div class="mode-screen" id="modeScreen">
+  <h2>EFC — Trem de Passageiros</h2>
+  <p>Escolha a viagem e toque em Iniciar. O GPS deste aparelho será usado.</p>
+  <div class="viagem-row">Viagem:
+    <input type="hidden" id="sentidoSel" value="auto">
+    <div class="viagem-btns" id="viagemBtns">
+      <button type="button" data-v="auto" class="on">Automático</button>
+      <button type="button" data-v="P-21">P-21</button>
+      <button type="button" data-v="P-22">P-22</button>
+    </div>
+    <div class="viagem-hint" id="viagemHint"></div>
+  </div>
+  <button class="mode-btn" id="btnBordo" type="button">
+    <div class="t">Iniciar — GPS do celular</div>
+    <div class="d">Funciona sem internet depois da primeira abertura. Mostra o km, a velocidade, o atraso e a previsão da próxima estação. Autorize a localização e mantenha o app aberto e a tela ligada.</div>
+  </button>
+  <div class="mode-err" id="modeErr"></div>
+</div>
+
+<div class="km-banner">
+  <div class="km-block">
+    <div class="label">KM DA FERROVIA</div>
+    <div class="value" id="kmBanner">--+---</div>
+  </div>
+  <div class="speed-block">
+    <div class="label">VELOCIDADE</div>
+    <div class="value"><span id="speedSide">--</span><span class="unit">km/h</span></div>
+  </div>
+</div>
+
+<main>
+  <div class="map-wrap">
+    <svg id="svg" viewBox="0 0 1000 640" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="info-overlay">
+      <div class="stat"><div class="l">Coordenadas</div><div class="v" id="coords">--, --</div></div>
+      <div class="stat"><div class="l" id="gpsQualityLabel">Satélites / HDOP</div><div class="v" id="gpsQuality">--</div></div>
+      <div class="stat"><div class="l">Última atualização</div><div class="v" id="updated">--</div></div>
+    </div>
+    <button class="zoom-reset" id="zoomReset" type="button">Restaurar mapa</button>
+    <div class="clock-overlay" id="clockOverlay">--- --/--/-- --:--:--</div>
+  </div>
+  <aside>
+    <div class="big stopped" id="stopCard" style="display:none"><div class="l">PARADO NA ESTAÇÃO</div><div class="v" id="stopName">--</div></div>
+    <div id="distCards" style="display:flex; flex-direction:column;">
+      <div class="big nearest" id="nextCard"><div class="l">DISTÂNCIA DA PRÓXIMA ESTAÇÃO</div><div class="v" id="nextStationDist">--</div></div>
+      <div class="big nearest" id="prevCard"><div class="l">DISTÂNCIA DA ESTAÇÃO ANTERIOR</div><div class="v" id="prevStationDist">--</div></div>
+    </div>
+
+    <hr>
+    <div class="legend"><span class="sw" style="background:#C7402B"></span> Traçado EFC</div>
+    <div class="legend"><span class="sw" style="background:#2ECC71; opacity:.5"></span> Percurso já percorrido</div>
+    <div class="legend"><span class="sw" style="background:var(--green)"></span> Estações</div>
+    <div class="legend"><span class="sw" style="background:var(--amber)"></span> Posição atual (real)</div>
+
+    <hr>
+    <p class="note" id="noteText"></p>
+
+    <hr>
+    <p class="signature">Criado e desenvolvido por Joylton Silva</p>
+  </aside>
+</main>
+
+<!-- Traçado completo com km oficial + motor de cálculo (usados offline no modo "A bordo") -->
+<script src="route_km.js"></script>
+<script src="engine.js"></script>
+<script>
+const ROUTE_DATA = {"route": [[-2.62165, -44.31053], [-2.65117, -44.30235], [-2.67846, -44.29769], [-2.7045, -44.31356], [-2.72866, -44.33479], [-2.74596, -44.35546], [-2.77061, -44.3732], [-2.80104, -44.37509], [-2.83179, -44.37535], [-2.86255, -44.37561], [-2.89295, -44.37403], [-2.91576, -44.3538], [-2.94529, -44.34549], [-2.9757, -44.3409], [-3.00533, -44.34877], [-3.03572, -44.34712], [-3.0652, -44.33877], [-3.09454, -44.33008], [-3.12511, -44.32971], [-3.15013, -44.34745], [-3.17488, -44.36561], [-3.19908, -44.38441], [-3.21995, -44.40689], [-3.24536, -44.42374], [-3.26958, -44.4426], [-3.29379, -44.46147], [-3.31801, -44.48034], [-3.34227, -44.49916], [-3.36819, -44.51562], [-3.39412, -44.5321], [-3.41746, -44.55193], [-3.44005, -44.5727], [-3.46264, -44.59348], [-3.488, -44.61037], [-3.51427, -44.62551], [-3.53586, -44.64732], [-3.5574, -44.66916], [-3.57507, -44.69418], [-3.57355, -44.72461], [-3.5771, -44.75501], [-3.56673, -44.78368], [-3.56013, -44.81185], [-3.54309, -44.83733], [-3.53233, -44.86534], [-3.54418, -44.89188], [-3.55937, -44.91808], [-3.57657, -44.94289], [-3.58868, -44.97102], [-3.59958, -44.99964], [-3.59279, -45.02841], [-3.58242, -45.05693], [-3.58407, -45.0875], [-3.59393, -45.11639], [-3.60403, -45.1453], [-3.61889, -45.17197], [-3.63268, -45.19932], [-3.64607, -45.22688], [-3.65787, -45.25512], [-3.66733, -45.28417], [-3.67555, -45.31367], [-3.68393, -45.34313], [-3.69428, -45.37196], [-3.69734, -45.40233], [-3.6994, -45.43288], [-3.71724, -45.4567], [-3.72233, -45.4862], [-3.72087, -45.51595], [-3.7149, -45.54545], [-3.7053, -45.57408], [-3.69827, -45.60389], [-3.69034, -45.63277], [-3.66802, -45.65271], [-3.65918, -45.68146], [-3.65128, -45.70967], [-3.64692, -45.73888], [-3.65146, -45.76906], [-3.65248, -45.79923], [-3.6591, -45.82808], [-3.67295, -45.8546], [-3.67703, -45.88476], [-3.6908, -45.91172], [-3.70759, -45.93704], [-3.70232, -45.9665], [-3.69984, -45.9951], [-3.70796, -46.02333], [-3.71076, -46.05295], [-3.72304, -46.08084], [-3.73546, -46.10832], [-3.75611, -46.13079], [-3.77994, -46.15], [-3.807, -46.16439], [-3.83466, -46.17741], [-3.86242, -46.18996], [-3.88988, -46.20267], [-3.92016, -46.20354], [-3.94438, -46.21958], [-3.95599, -46.24762], [-3.98282, -46.26163], [-4.00916, -46.27616], [-4.02792, -46.30014], [-4.0434, -46.32598], [-4.0595, -46.35104], [-4.08108, -46.37105], [-4.10572, -46.38817], [-4.12265, -46.4136], [-4.14144, -46.43534], [-4.16821, -46.44839], [-4.18962, -46.4698], [-4.21024, -46.4912], [-4.23246, -46.51158], [-4.25435, -46.53122], [-4.27724, -46.54947], [-4.29782, -46.57129], [-4.31955, -46.59264], [-4.32653, -46.62218], [-4.34213, -46.64782], [-4.34898, -46.67757], [-4.36314, -46.70392], [-4.38041, -46.72879], [-4.3842, -46.75791], [-4.38599, -46.78709], [-4.38698, -46.81741], [-4.39942, -46.84426], [-4.42395, -46.8621], [-4.44118, -46.88584], [-4.45426, -46.91155], [-4.47355, -46.93379], [-4.48696, -46.95898], [-4.49679, -46.98246], [-4.50106, -47.00862], [-4.50348, -47.03869], [-4.52255, -47.06139], [-4.54033, -47.08514], [-4.55992, -47.09809], [-4.5653, -47.12405], [-4.57903, -47.15074], [-4.58898, -47.17972], [-4.60931, -47.19924], [-4.63087, -47.21744], [-4.64806, -47.24219], [-4.67262, -47.26051], [-4.69346, -47.28303], [-4.71748, -47.30168], [-4.74601, -47.30962], [-4.77416, -47.29801], [-4.80146, -47.30807], [-4.80145, -47.33303], [-4.80982, -47.3546], [-4.83733, -47.36702], [-4.86452, -47.37766], [-4.89421, -47.37764], [-4.91116, -47.40306], [-4.92875, -47.42676], [-4.9531, -47.4441], [-4.97203, -47.46824], [-4.99753, -47.48477], [-5.02561, -47.49722], [-5.05513, -47.50365], [-5.07529, -47.52659], [-5.09195, -47.55204], [-5.10466, -47.57945], [-5.10568, -47.60901], [-5.09294, -47.63434], [-5.1, -47.66374], [-5.11593, -47.68995], [-5.11883, -47.71637], [-5.13342, -47.73715], [-5.12765, -47.7639], [-5.14287, -47.78782], [-5.12743, -47.81005], [-5.11213, -47.83185], [-5.13441, -47.85238], [-5.14804, -47.87807], [-5.15269, -47.90803], [-5.16281, -47.93454], [-5.17172, -47.96044], [-5.17065, -47.989], [-5.16428, -48.01628], [-5.17587, -48.0444], [-5.17271, -48.07485], [-5.16889, -48.10525], [-5.16169, -48.13502], [-5.16585, -48.16534], [-5.16516, -48.19598], [-5.16002, -48.22618], [-5.1594, -48.25679], [-5.15758, -48.28722], [-5.14855, -48.31648], [-5.15176, -48.34694], [-5.14919, -48.37741], [-5.15153, -48.40778], [-5.15529, -48.43811], [-5.15834, -48.46836], [-5.16789, -48.49683], [-5.18493, -48.52146], [-5.20113, -48.5473], [-5.22062, -48.57068], [-5.22901, -48.60051], [-5.2429, -48.62784], [-5.25153, -48.65664], [-5.25193, -48.68715], [-5.2503, -48.71777], [-5.25153, -48.74842], [-5.2523, -48.77907], [-5.25049, -48.80968], [-5.24865, -48.8412], [-5.24687, -48.87182], [-5.24509, -48.90244], [-5.24337, -48.93306], [-5.24642, -48.96292], [-5.25923, -48.9908], [-5.27198, -49.01871], [-5.28485, -49.04656], [-5.30326, -49.07113], [-5.32958, -49.08574], [-5.35721, -49.07382], [-5.38365, -49.08926], [-5.40978, -49.1052], [-5.43262, -49.12501], [-5.44773, -49.15083], [-5.45597, -49.17976], [-5.47962, -49.19907], [-5.5076, -49.20917], [-5.5377, -49.21182], [-5.56077, -49.23051], [-5.58179, -49.25289], [-5.60395, -49.27394], [-5.62679, -49.2944], [-5.64428, -49.31881], [-5.65554, -49.34696], [-5.66105, -49.37759], [-5.6515, -49.40641], [-5.64702, -49.43516], [-5.64516, -49.46483], [-5.65605, -49.49143], [-5.67841, -49.51123], [-5.69069, -49.53887], [-5.69361, -49.56891], [-5.70334, -49.59475], [-5.72613, -49.61384], [-5.73495, -49.64269], [-5.74272, -49.67222], [-5.76488, -49.69244], [-5.75893, -49.72062], [-5.7795, -49.74105], [-5.79601, -49.76525], [-5.82293, -49.77926], [-5.84692, -49.7983], [-5.87567, -49.80669], [-5.89816, -49.82612], [-5.91994, -49.84636], [-5.93637, -49.87056], [-5.96489, -49.87461], [-5.98749, -49.89304], [-5.99798, -49.90686]], "stations": [["Auzilândia", -3.75444, -46.12822], ["Vitória do Mearim", -3.53281, -44.8618], ["Arari", -3.57355, -44.69137], ["Mineirinho", -3.69765, -45.99113], ["Santa Inês", -3.69822, -45.41517], ["Anjo da Guarda", -2.56729, -44.33194], ["Alto Alegre", -3.67013, -45.84448], ["Parauapebas", -5.9942, -49.89499], ["Itainópolis", -5.65429, -49.40189], ["Altamira", -3.87847, -46.19957], ["Vila Pindaré", -4.01697, -46.28554], ["Nova Vida", -4.32227, -46.60336], ["Açailândia", -4.91166, -47.40409], ["São Pedro", -5.15718, -48.44772], ["Marabá", -5.39705, -49.09835]]};
+
+const W = 1000, H = 640, PAD = 40;
+let lats = ROUTE_DATA.route.map(p=>p[0]), lons = ROUTE_DATA.route.map(p=>p[1]);
+let latMin=Math.min(...lats), latMax=Math.max(...lats);
+let lonMin=Math.min(...lons);
+let meanLat = (latMin+latMax)/2 * Math.PI/180;
+let lonScale = Math.cos(meanLat);
+function rawXY(lat, lon){ return [ (lon-lonMin)*lonScale, (latMax-lat) ]; }
+let rawPts = ROUTE_DATA.route.map(p=>rawXY(p[0],p[1]));
+let rxs = rawPts.map(p=>p[0]), rys = rawPts.map(p=>p[1]);
+let rw = Math.max(...rxs)-Math.min(...rxs), rh = Math.max(...rys)-Math.min(...rys);
+let scale = Math.min((W-2*PAD)/rw, (H-2*PAD)/rh);
+let ox = Math.min(...rxs), oy = Math.min(...rys);
+function project(lat, lon){ let [x,y] = rawXY(lat,lon); return [ PAD + (x-ox)*scale, PAD + (y-oy)*scale ]; }
+
+const svgNS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById('svg');
+let d = ROUTE_DATA.route.map((p,i)=>{ let [x,y] = project(p[0],p[1]); return (i===0?'M':'L') + x.toFixed(1) + ',' + y.toFixed(1); }).join(' ');
+let trackEl = document.createElementNS(svgNS,'path');
+trackEl.setAttribute('d', d); trackEl.setAttribute('class','track');
+svg.appendChild(trackEl);
+
+// --- Rastro do percurso já percorrido (verde, 50% de transparência) ---
+// Calculado só a partir do km atual e do sentido da viagem (não depende de quando o GPS foi
+// ligado): ida (P-21) = do km 0 até a posição atual; volta (P-22) = do fim da linha até ela.
+const trailEl = document.createElementNS(svgNS,'path');
+trailEl.setAttribute('class','trail');
+svg.appendChild(trailEl);
+const kmXY = ROUTE_KM.km.map((k, i) => project(ROUTE_KM.lat[i], ROUTE_KM.lon[i]));   // pré-projetado
+function kmIndexAtOrBefore(km){            // maior índice com ROUTE_KM.km[i] <= km (busca binária)
+  let lo = 0, hi = ROUTE_KM.km.length - 1;
+  while (lo < hi){ const mid = (lo + hi + 1) >> 1; if (ROUTE_KM.km[mid] <= km) lo = mid; else hi = mid - 1; }
+  return lo;
+}
+function updateTrail(km, sentido){
+  const n = ROUTE_KM.km.length;
+  km = Math.max(0, Math.min(ROUTE_KM.km[n - 1], km || 0));
+  const i = kmIndexAtOrBefore(km);
+  let head = kmXY[i];                                  // ponto da linha na posição atual (interpolado)
+  if (i < n - 1){
+    const k0 = ROUTE_KM.km[i], k1 = ROUTE_KM.km[i + 1], t = k1 > k0 ? (km - k0) / (k1 - k0) : 0;
+    head = [kmXY[i][0] + t * (kmXY[i+1][0] - kmXY[i][0]), kmXY[i][1] + t * (kmXY[i+1][1] - kmXY[i][1])];
+  }
+  const pts = [];
+  if (sentido === 'volta'){ pts.push(head); for (let j = i + 1; j < n; j++) pts.push(kmXY[j]); }
+  else { for (let j = 0; j <= i; j++) pts.push(kmXY[j]); pts.push(head); }
+  trailEl.setAttribute('d', pts.length < 2 ? '' : pts.map((q, j) => (j ? 'L' : 'M') + q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(' '));
+}
+
+// --- Estações: posicionamento do nome evitando a linha e outras etiquetas ---
+const projectedRoute = ROUTE_DATA.route.map(p => project(p[0], p[1]));
+
+function distToRoute(px, py){
+  let best = Infinity;
+  for (const [rx, ry] of projectedRoute){
+    const dx = rx - px, dy = ry - py;
+    const dd = dx*dx + dy*dy;
+    if (dd < best) best = dd;
+  }
+  return Math.sqrt(best);
+}
+function boxesOverlap(a, b, pad=3){
+  return !(a.x2+pad < b.x1 || a.x1 > b.x2+pad || a.y2+pad < b.y1 || a.y1 > b.y2+pad);
+}
+
+const CANDIDATES = [
+  {dx:12, dy:4,  anchor:'start'},
+  {dx:-12,dy:4,  anchor:'end'},
+  {dx:0,  dy:-12,anchor:'middle'},
+  {dx:0,  dy:19, anchor:'middle'},
+  {dx:13, dy:-10,anchor:'start'},
+  {dx:-13,dy:-10,anchor:'end'},
+  {dx:13, dy:17, anchor:'start'},
+  {dx:-13,dy:17, anchor:'end'},
+  {dx:20, dy:4,  anchor:'start'},
+  {dx:-20,dy:4,  anchor:'end'},
+  {dx:0,  dy:-20,anchor:'middle'},
+  {dx:0,  dy:27, anchor:'middle'},
+];
+const placedBoxes = [];
+const CHAR_W = 7.6, TEXT_H = 15;
+
+// Posições forçadas manualmente para estações onde o posicionamento
+// automático não ficou bom (pula a busca por candidatos e usa só esta).
+const LABEL_OVERRIDES = {
+  "Alto Alegre": { dx: -4, dy: -14, anchor: "start" },   // 1º "A" em cima do ponto
+  "Mineirinho": { dx: 13, dy: 23, anchor: "start" },   // à direita da linha
+};
+
+const stationDots = [];
+ROUTE_DATA.stations.forEach(([name, lat, lon])=>{
+  const [sx, sy] = project(lat, lon);
+
+  let c = document.createElementNS(svgNS,'circle');
+  c.setAttribute('cx',sx); c.setAttribute('cy',sy); c.setAttribute('r',4); c.setAttribute('class','station-dot');
+  stationDots.push(c); // desenhado por cima dos rótulos, ao final
+
+  const textW = name.length * CHAR_W;
+  let best = null, bestBox = null, bestScore = -Infinity;
+  const candidateList = LABEL_OVERRIDES[name] ? [LABEL_OVERRIDES[name]] : CANDIDATES;
+
+  for (const cand of candidateList){
+    const tx = sx + cand.dx, ty = sy + cand.dy;
+    let x1, x2;
+    if (cand.anchor === 'start'){ x1 = tx; x2 = tx + textW; }
+    else if (cand.anchor === 'end'){ x1 = tx - textW; x2 = tx; }
+    else { x1 = tx - textW/2; x2 = tx + textW/2; }
+    const box = { x1, y1: ty - TEXT_H*0.75, x2, y2: ty + TEXT_H*0.3 };
+
+    const routeDist = distToRoute((box.x1+box.x2)/2, (box.y1+box.y2)/2);
+    const overlapsLabel = placedBoxes.some(b => boxesOverlap(box, b));
+    const outOfBounds = box.x1 < 2 || box.x2 > (W-2) || box.y1 < 2 || box.y2 > (H-2);
+
+    let score = routeDist;
+    if (overlapsLabel) score -= 1000;
+    if (routeDist < 9) score -= 300;
+    if (outOfBounds) score -= 5000;
+
+    if (score > bestScore){
+      bestScore = score;
+      best = { tx, ty, anchor: cand.anchor };
+      bestBox = box;
+    }
+  }
+
+  // salvaguarda final: garante que o rótulo não fique cortado pela borda do mapa
+  if (bestBox.x1 < 2){ const s = 2 - bestBox.x1; bestBox.x1 += s; bestBox.x2 += s; best.tx += s; }
+  if (bestBox.x2 > W-2){ const s = bestBox.x2 - (W-2); bestBox.x1 -= s; bestBox.x2 -= s; best.tx -= s; }
+  if (bestBox.y1 < 2){ const s = 2 - bestBox.y1; bestBox.y1 += s; bestBox.y2 += s; best.ty += s; }
+  if (bestBox.y2 > H-2){ const s = bestBox.y2 - (H-2); bestBox.y1 -= s; bestBox.y2 -= s; best.ty -= s; }
+
+  placedBoxes.push(bestBox);
+
+  const padX = 3, padY = 2;
+  let bg = document.createElementNS(svgNS,'rect');
+  bg.setAttribute('x', bestBox.x1 - padX);
+  bg.setAttribute('y', bestBox.y1 - padY);
+  bg.setAttribute('width', (bestBox.x2 - bestBox.x1) + 2*padX);
+  bg.setAttribute('height', (bestBox.y2 - bestBox.y1) + 2*padY);
+  bg.setAttribute('rx', 3);
+  bg.setAttribute('class', 'station-label-bg');
+  svg.appendChild(bg);
+
+  let t = document.createElementNS(svgNS,'text');
+  t.setAttribute('x', best.tx); t.setAttribute('y', best.ty);
+  t.setAttribute('text-anchor', best.anchor);
+  t.setAttribute('class','station-label');
+  t.textContent = name;
+  svg.appendChild(t);
+});
+
+stationDots.forEach(c => svg.appendChild(c));
+
+let trainGroup = document.createElementNS(svgNS,'g');
+let glow = document.createElementNS(svgNS,'circle'); glow.setAttribute('r', 14); glow.setAttribute('class','train-glow');
+let pin = document.createElementNS(svgNS,'circle'); pin.setAttribute('r', 7); pin.setAttribute('class','train-pin');
+let win = document.createElementNS(svgNS,'circle'); win.setAttribute('r', 2.6); win.setAttribute('class','train-window');
+trainGroup.appendChild(glow); trainGroup.appendChild(pin); trainGroup.appendChild(win);
+trainGroup.style.display = 'none';
+svg.appendChild(trainGroup);
+
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371, toRad = x=>x*Math.PI/180;
+  const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R*2*Math.asin(Math.sqrt(a));
+}
+
+// --- Data/hora do sistema (do dispositivo que está vendo a página),
+// exibida no canto inferior direito do mapa ---
+const WEEKDAY_ABBR_PT = ['dom','seg','ter','qua','qui','sex','sáb']; // Date.getDay(): 0=domingo
+function updateClockOverlay(){
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2,'0');
+  const mm = String(now.getMonth()+1).padStart(2,'0');
+  const yy = String(now.getFullYear()).slice(-2);
+  const diaSemana = WEEKDAY_ABBR_PT[now.getDay()];
+  const hh = String(now.getHours()).padStart(2,'0');
+  const min = String(now.getMinutes()).padStart(2,'0');
+  const ss = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('clockOverlay').textContent =
+    `${diaSemana} ${dd}/${mm}/${yy} ${hh}:${min}:${ss}`;
+}
+updateClockOverlay();
+setInterval(updateClockOverlay, 1000);
+
+// --- Previsão da próxima estação e atraso/adiantamento ---
+// Esses valores NÃO são recalculados aqui: vêm prontos do app Windows
+// (schedule.py), que tem a leitura contínua do GPS e sabe a velocidade
+// média real da viagem. Calcular de novo no navegador duplicaria a lógica
+// e dependeria do relógio do aparelho de quem está vendo a página.
+function updateNextStationPanel(d){
+  if (!document.getElementById('nextStationPred')) return;   // painel removido da tela
+  const vEl = document.getElementById('nextStationPred');
+  const fEl = document.getElementById('nextStationFrom');
+  if (d.proxima_estacao && d.chegada_prevista_proxima){
+    vEl.textContent = d.proxima_estacao + ' — ' + d.chegada_prevista_proxima;
+  } else if (d.proxima_estacao){
+    vEl.textContent = d.proxima_estacao + ' — calculando...';
+  } else {
+    vEl.textContent = '--';
+  }
+  fEl.textContent = (d.velocidade_media_kmh != null)
+    ? 'vel. média da viagem: ' + d.velocidade_media_kmh.toFixed(1) + ' km/h'
+    : '--';
+}
+
+// Horário real em que o trem partiu da estação anterior e chegou na
+// estação atual (última alcançada) - também calculado pelo app Windows.
+function updateLegPanel(d){
+  if (!document.getElementById('legDepart')) return;   // painel removido da tela
+  const dEl = document.getElementById('legDepart');
+  const aEl = document.getElementById('legArrive');
+  dEl.textContent = (d.estacao_origem && d.partida_estacao_origem)
+    ? d.estacao_origem + ' — ' + d.partida_estacao_origem : '--';
+  aEl.textContent = (d.estacao_anterior && d.chegada_estacao_atual)
+    ? d.estacao_anterior + ' — ' + d.chegada_estacao_atual : '--';
+}
+
+// O atraso/adiantamento é apurado na PARTIDA REAL da última estação,
+// comparado ao horário de partida previsto (quadro oficial): partiu
+// depois do previsto = atrasado; partiu antes = adiantado. Em Parauapebas
+// (fim da linha, sem partida), usa a CHEGADA e finaliza o cálculo ali.
+function updateDelayPanel(d){
+  if (!document.getElementById('delayValue')) return;   // painel removido da tela
+  const el = document.getElementById('delayValue');
+  const fEl = document.getElementById('delayFrom');
+  if (d.atraso_min == null){
+    el.textContent = '--';
+    el.className = 'v';
+  } else if (d.atraso_min > 0){
+    el.textContent = d.atraso_min + ' min atrasado';
+    el.className = 'v late';
+  } else if (d.atraso_min < 0){
+    el.textContent = Math.abs(d.atraso_min) + ' min adiantado';
+    el.className = 'v early';
+  } else {
+    el.textContent = 'No horário';
+    el.className = 'v ontime';
+  }
+  if (d.estacao_anterior && d.partida_real_anterior){
+    const verbo = d.estacao_e_final ? 'chegou em ' : 'partiu de ';
+    fEl.textContent = verbo + d.estacao_anterior + ' às ' + d.partida_real_anterior;
+  } else {
+    fEl.textContent = '--';
+  }
+}
+
+// ===================================================================
+// Modos de uso
+//   A bordo : GPS do celular, tudo calculado aqui (engine.js), sem internet.
+//   Remoto  : lê do Firebase o que o computador do trem transmite.
+// Os dois alimentam o MESMO painel através de renderState().
+// ===================================================================
+let MODE = null;
+let lastReceivedAt = 0;
+let LIVE_LABEL = 'AO VIVO';
+let WAIT_LABEL = 'Aguardando dados...';
+let LOST_LABEL = 'SEM SINAL';
+
+const NOTE_BORDO = 'Modo a bordo: o GPS deste celular é usado e todos os cálculos são feitos aqui, sem internet. Mantenha o app aberto e a tela ligada. O horário de partida de cada estação é o momento em que o GPS passa pelo km dela, então se você abrir o app no meio da viagem, as estações anteriores ficam sem horário.';
+
+// Mostra o estado (posição, km, velocidade e status de viagem) no painel.
+// d usa os mesmos campos que o app Windows envia ao Firebase.
+function sentidoEscolhido(){ return resolverSentido(document.getElementById('sentidoSel').value, new Date()); }
+function refreshViagemHint(){
+  const v = document.getElementById('sentidoSel').value, s = sentidoEscolhido();
+  document.querySelectorAll('#viagemBtns button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  document.getElementById('viagemHint').textContent =
+    PREFIXOS[s] + ' — ' + ROTULOS[s] + (v === 'auto' ? ' (automático, pelo dia da semana)' : '');
+}
+document.getElementById('viagemBtns').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.getElementById('sentidoSel').value = b.dataset.v;
+  refreshViagemHint();
+});
+refreshViagemHint();
+
+// --- Zoom (pinça / roda do mouse) SÓ no mapa: afeta a linha, o rastro, as estações e o trem,
+// e não os outros cards. Funciona alterando o viewBox do SVG. Arrastar com um dedo move o mapa
+// quando está ampliado; duplo toque/clique restaura.
+(function(){
+  const VB_W = 1000, VB_H = 640, MAX_ZOOM = 12;
+  const view = { s: 1, x: 0, y: 0 };
+  const resetBtn = document.getElementById('zoomReset');
+  function apply(){
+    view.s = Math.max(1, Math.min(MAX_ZOOM, view.s));
+    const w = VB_W / view.s, h = VB_H / view.s;
+    view.x = Math.max(0, Math.min(VB_W - w, view.x));
+    view.y = Math.max(0, Math.min(VB_H - h, view.y));
+    svg.setAttribute('viewBox', view.x + ' ' + view.y + ' ' + w + ' ' + h);
+    svg.style.touchAction = view.s > 1 ? 'none' : 'pan-y';   // ampliado: o dedo move o mapa, não a página
+    resetBtn.style.display = view.s > 1 ? 'block' : 'none';
+  }
+  function toSvg(cx, cy){
+    const pt = svg.createSVGPoint(); pt.x = cx; pt.y = cy;
+    return pt.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  // muda a escala mantendo o ponto A (coordenada do SVG) debaixo do ponto da tela (cx, cy)
+  function setScaleAnchored(s, A, cx, cy){
+    view.s = s; apply();
+    const P = toSvg(cx, cy);
+    view.x += A.x - P.x; view.y += A.y - P.y; apply();
+  }
+  function reset(){ view.s = 1; view.x = 0; view.y = 0; apply(); }
+  resetBtn.addEventListener('click', reset);
+  svg.addEventListener('dblclick', reset);
+
+  svg.addEventListener('wheel', e => {            // roda do mouse / pinça do trackpad
+    e.preventDefault();
+    const A = toSvg(e.clientX, e.clientY);
+    setScaleAnchored(view.s * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), A, e.clientX, e.clientY);
+  }, { passive: false });
+
+  const ptrs = new Map();   // pointerId -> {x, y}
+  let g = null;             // gesto atual: { s0, dist0, A }
+  function center(){ const v = [...ptrs.values()]; return { x: v.reduce((a, q) => a + q.x, 0) / v.length, y: v.reduce((a, q) => a + q.y, 0) / v.length }; }
+  function span(){ const v = [...ptrs.values()]; return v.length < 2 ? 0 : Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y); }
+  function startGesture(){
+    if (!ptrs.size){ g = null; return; }
+    const c = center(); g = { s0: view.s, dist0: span(), A: toSvg(c.x, c.y) };
+  }
+  svg.addEventListener('pointerdown', e => {
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+    startGesture();
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!ptrs.has(e.pointerId) || !g) return;
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size < 2 && view.s <= 1) return;     // um dedo sem zoom: deixa a página rolar
+    const c = center();
+    const s = ptrs.size >= 2 && g.dist0 > 0 ? g.s0 * span() / g.dist0 : g.s0;
+    setScaleAnchored(s, g.A, c.x, c.y);
+  });
+  function end(e){ ptrs.delete(e.pointerId); startGesture(); }
+  svg.addEventListener('pointerup', end);
+  svg.addEventListener('pointercancel', end);
+})();
+
+function renderState(d){
+  lastReceivedAt = Date.now();
+  const tag = document.getElementById('viagemTag');
+  const pref = d.prefixo || (d.sentido ? PREFIXOS[d.sentido] : null);
+  tag.textContent = pref ? pref + ' · ' + ROTULOS[d.sentido || (pref === 'P-22' ? 'volta' : 'ida')] + ' · ' : '';
+
+  updateTrail(d.km, d.sentido === 'volta' ? 'volta' : 'ida');
+  trainGroup.style.display = '';
+  const [x,y] = project(d.lat, d.lon);
+  trainGroup.setAttribute('transform', `translate(${x},${y})`);
+
+  const kmText = d.km_formatado || formatKmBR(d.km || 0);
+  const kmEl = document.getElementById('kmBanner');
+  kmEl.textContent = kmText;
+  kmEl.classList.toggle('yard', !!d.no_patio);
+  document.getElementById('coords').textContent = d.lat.toFixed(5)+', '+d.lon.toFixed(5);
+  document.getElementById('speedSide').textContent = (d.velocidade_kmh != null ? d.velocidade_kmh.toFixed(1) : '--');
+  if (d.precisao_m != null){
+    document.getElementById('gpsQualityLabel').textContent = 'Precisão do GPS';
+    document.getElementById('gpsQuality').textContent = '± ' + Math.round(d.precisao_m) + ' m';
+  } else {
+    document.getElementById('gpsQualityLabel').textContent = 'Satélites / HDOP';
+    document.getElementById('gpsQuality').textContent =
+      (d.satelites != null ? d.satelites : '--') + ' sat. · HDOP ' + (d.hdop != null ? d.hdop.toFixed(1) : '--');
+  }
+
+  updateStationDistances(d);
+  updateStopCard(d);
+  updateNextStationPanel(d);
+  updateDelayPanel(d);
+  updateLegPanel(d);
+}
+
+// Card temporário "Parado na Estação": aparece só quando o trem está a menos de 500 m de uma
+// estação do KML (distância em linha reta até o ponto da estação) e com velocidade abaixo de 2 km/h.
+const STOP_MAX_DIST_KM = 0.5, STOP_MAX_SPEED_KMH = 2;
+function updateStopCard(d){
+  const card = document.getElementById('stopCard');
+  let name = null, best = Infinity;
+  if (d.lat != null && d.lon != null){
+    ROUTE_DATA.stations.forEach(([n, la, lo]) => {
+      const dist = haversine(d.lat, d.lon, la, lo);
+      if (dist < best){ best = dist; name = n; }
+    });
+  }
+  const v = d.velocidade_kmh;
+  const parado = name !== null && best < STOP_MAX_DIST_KM && v != null && v < STOP_MAX_SPEED_KMH;
+  card.style.display = parado ? '' : 'none';
+  if (parado) document.getElementById('stopName').textContent = name;
+}
+
+// Distância (pela linha, em km) até a estação anterior e a próxima, no sentido da viagem.
+// Na TP01 e no Pátio de Recepção (antes do km 0 da EFC) a distância vem da posição ao longo
+// deles (d.area_dist_m, em metros desde a estação de Anjo da Guarda).
+function fmtDist(km){ return km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(1) + ' km'; }
+function updateStationDistances(d){
+  const pEl = document.getElementById('prevStationDist'), nEl = document.getElementById('nextStationDist');
+  const sent = d.sentido === 'volta' ? 'volta' : 'ida', sch = SCHEDULES[sent];
+  let prev = null, prevD = null, next = null, nextD = null;
+  if (d.no_patio && d.area_dist_m != null){
+    const s = d.area_dist_m / 1000, ext = 6.89;           // TP01 (1 km) + pátio (5,89 km)
+    if (sent === 'ida'){ prev = sch[0]; prevD = s; next = sch[1]; nextD = sch[1][1] + (ext - s); }
+    else { prev = sch[sch.length - 2]; prevD = prev[1] ? (TOTAL_KM - prev[1]) + (ext - s) : null; next = sch[sch.length - 1]; nextD = s; }
+  } else {
+    const pos = sent === 'ida' ? (d.km || 0) : TOTAL_KM - (d.km || 0);
+    // (uma estação já conta como alcançada a 50 m antes dela, pela imprecisão do GPS)
+    for (const r of sch){ if (r[1] - 0.05 <= pos) prev = r; else { next = r; break; } }
+    if (prev) prevD = pos - prev[1];
+    if (next) nextD = next[1] - pos;
+    // a estação de Anjo da Guarda fica no início da TP01, 6,89 km ANTES do km 0 da EFC
+    // (TP01 + pátio): soma esse trecho para a distância ser contínua com a que se vê no pátio
+    if (prev && prev[0] === 'Anjo da Guarda') prevD += 6.89;
+    if (next && next[0] === 'Anjo da Guarda') nextD += 6.89;
+  }
+  pEl.textContent = prev && prevD != null ? prev[0] + ' (' + fmtDist(Math.max(0, prevD)) + ')' : '--';
+  nEl.textContent = next && nextD != null ? next[0] + ' (' + fmtDist(Math.max(0, nextD)) + ')' : '--';
+}
+
+function refreshLiveBadge(){
+  if (!MODE) return;
+  const badge = document.getElementById('liveBadge');
+  const text = document.getElementById('liveText');
+  const ageMs = Date.now() - lastReceivedAt;
+
+  if (lastReceivedAt === 0) {
+    badge.className = 'badge off';
+    text.textContent = WAIT_LABEL;
+  } else if (ageMs < 8000) {
+    badge.className = 'badge';
+    text.textContent = LIVE_LABEL;
+  } else {
+    badge.className = 'badge off';
+    text.textContent = LOST_LABEL;
+  }
+
+  if (lastReceivedAt > 0) {
+    document.getElementById('updated').textContent =
+      ageMs < 1000 ? 'agora mesmo' : `há ${Math.round(ageMs/1000)} s`;
+  }
+}
+setInterval(refreshLiveBadge, 1000);
+
+function enterMode(mode, note){
+  MODE = mode;
+  document.getElementById('modeScreen').style.display = 'none';
+  document.getElementById('switchMode').style.display = '';
+  document.getElementById('noteText').textContent = note || (NOTE_BORDO);
+  lastReceivedAt = 0;
+  refreshLiveBadge();
+}
+function showModeError(msg){ document.getElementById('modeErr').textContent = msg; }
+
+document.getElementById('switchMode').addEventListener('click', () => location.reload());
+document.getElementById('btnBordo').addEventListener('click', () => startOnboard());
+
+// ------------------------- Modo A BORDO (GPS do celular) ----------------
+let rail = null, tracker = null, fixFilter = null;
+let prevFix = null;           // última leitura aceita (para estimar a velocidade)
+let smoothSpeed = null;
+let wakeLock = null;
+
+// Processa uma leitura de GPS (lat, lon em graus; speedMs em m/s ou null;
+// accM = precisão em metros; now = Date).
+let lastSt = null;
+function handleFix(lat, lon, speedMs, accM, now){
+  const loc = rail.locate(lat, lon);
+  const area = AREAS.locate(lat, lon, loc.offsetM);   // TP01 / Pátio de Recepção (fora da linha principal)
+  if (area){
+    // mostra o nome da área no lugar do km. A partida de Anjo da Guarda conta a partir de 200 m da
+    // estação (distância ao longo da TP01/pátio).
+    const st0 = tracker.update(0, now, area.distM);
+    lastSt = st0;
+    const v = (speedMs != null && !isNaN(speedMs)) ? speedMs * 3.6 : (smoothSpeed || 0);
+    renderState(Object.assign({
+      lat: lat, lon: lon, km: 0, km_formatado: area.name, no_patio: true, area: area.name, area_dist_m: area.distM,
+      velocidade_kmh: v, precisao_m: accM,
+    }, st0));
+    return;
+  }
+  if (!fixFilter.accept(loc, now.getTime())){
+    // fora da linha ou salto impossível: não entra nos cálculos da viagem
+    lastReceivedAt = Date.now();
+    document.getElementById('gpsQualityLabel').textContent = 'Precisão do GPS';
+    document.getElementById('gpsQuality').textContent = loc.offsetM > 1500 ? 'fora da linha' : '± ' + Math.round(accM || 0) + ' m';
+    return;
+  }
+
+  // velocidade: a do aparelho quando existe; senão, pela distância entre leituras
+  let v = (speedMs != null && !isNaN(speedMs)) ? speedMs * 3.6 : null;
+  if (v == null && prevFix){
+    const dtH = (now - prevFix.t) / 3600000;
+    if (dtH > 0) v = Math.abs(loc.km - prevFix.km) / dtH;
+  }
+  if (v != null) smoothSpeed = (smoothSpeed == null) ? v : smoothSpeed * 0.6 + v * 0.4;
+  prevFix = { km: loc.km, t: now };
+
+  const st = tracker.update(loc.km, now);
+  lastSt = st;
+  renderState(Object.assign({
+    lat: lat, lon: lon,
+    km: loc.km, km_formatado: formatKmBR(loc.km),
+    velocidade_kmh: smoothSpeed != null ? smoothSpeed : 0,
+    precisao_m: accM,
+  }, st));
+}
+
+async function requestWakeLock(){
+  try {
+    if ('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  } catch (e) { /* sem suporte ou negado: segue sem manter a tela ligada */ }
+}
+
+function startOnboard(){
+  showModeError('');
+  if (!('geolocation' in navigator)){
+    showModeError('Este aparelho/navegador não oferece GPS para páginas web.');
+    return;
+  }
+  rail = new RailKm(ROUTE_KM.lat, ROUTE_KM.lon, ROUTE_KM.km);
+  tracker = new TripTracker(sentidoEscolhido());
+  fixFilter = new FixFilter();
+  prevFix = null; smoothSpeed = null;
+
+  enterMode('bordo');
+  LIVE_LABEL = 'GPS DO CELULAR'; WAIT_LABEL = 'Aguardando GPS...'; LOST_LABEL = 'SEM SINAL DE GPS';
+  refreshLiveBadge();
+
+  navigator.geolocation.watchPosition(
+    (pos) => handleFix(pos.coords.latitude, pos.coords.longitude, pos.coords.speed, pos.coords.accuracy, new Date()),
+    (err) => {
+      const msgs = {1: 'Permissão de localização negada', 2: 'GPS indisponível', 3: 'GPS demorou para responder'};
+      document.getElementById('liveBadge').className = 'badge off';
+      document.getElementById('liveText').textContent = msgs[err.code] || 'Erro no GPS';
+    },
+    { enableHighAccuracy: true, maximumAge: 1000, timeout: 30000 }
+  );
+
+  requestWakeLock();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') requestWakeLock();
+  });
+}
+
+// --------------------------- Instalável / offline (PWA) -----------------
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
