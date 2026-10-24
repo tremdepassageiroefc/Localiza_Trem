@@ -58,7 +58,7 @@
   .big.speed .v{color:#5FC7FF;}
   .big.stopped{border-color:var(--amber); background:#2a2412;}
   .big.stopped .l{color:var(--amber); font-weight:600;}
-  .big.stopped .v{color:var(--amber); font-size:22px; line-height:1.3;}
+  .big.stopped .v{color:var(--amber); font-size:22px; line-height:1.3; white-space:nowrap;}
   .big.nearest .v{color:var(--green); font-size:19px; line-height:1.3;}
   .legend{display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); margin-bottom:6px;}
   .sw{width:11px; height:11px; border-radius:3px; flex-shrink:0;}
@@ -166,7 +166,7 @@
     <div class="clock-overlay" id="clockOverlay">--- --/--/-- --:--:--</div>
   </div>
   <aside>
-    <div class="big stopped" id="stopCard" style="display:none"><div class="l">PARADO NA ESTAÇÃO</div><div class="v" id="stopName">--</div></div>
+    <div class="big stopped" id="stopCard" style="display:none"><div class="l">NA ESTAÇÃO</div><div class="v" id="stopName">--</div></div>
     <div id="distCards" style="display:flex; flex-direction:column;">
       <div class="big nearest" id="nextCard"><div class="l">DISTÂNCIA DA PRÓXIMA ESTAÇÃO</div><div class="v" id="nextStationDist">--</div></div>
       <div class="big nearest" id="prevCard"><div class="l">DISTÂNCIA DA ESTAÇÃO ANTERIOR</div><div class="v" id="prevStationDist">--</div></div>
@@ -565,8 +565,8 @@ function renderState(d){
 }
 
 // Card temporário "Parado na Estação": aparece só quando o trem está a menos de 500 m de uma
-// estação do KML (distância em linha reta até o ponto da estação) e com velocidade abaixo de 2 km/h.
-const STOP_MAX_DIST_KM = 0.5, STOP_MAX_SPEED_KMH = 2;
+// estação do KML (distância em linha reta até o ponto da estação) e com velocidade abaixo de 5 km/h.
+const STOP_MAX_DIST_KM = 0.5, STOP_MAX_SPEED_KMH = 5;
 function updateStopCard(d){
   const card = document.getElementById('stopCard');
   let name = null, best = Infinity;

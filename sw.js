@@ -3,7 +3,7 @@
  * (modo "A bordo"). Para publicar uma nova versão do app, aumente o número em
  * CACHE (ex.: efc-v2) - assim os celulares descartam o cache antigo.
  */
-const CACHE = 'efc-bordo-v15';
+const CACHE = 'efc-bordo-v17';
 const SHELL = [
   './', 'index.html', 'engine.js', 'route_km.js',
   'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png',
